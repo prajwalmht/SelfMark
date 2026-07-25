@@ -1,6 +1,7 @@
 
 # Dependencies
 node_modules/
+supabase/
 
 # Build output
 dist/
@@ -29,4 +30,5 @@ pnpm-debug.log*
 # TypeScript
 *.tsbuildinfo
 
-README.mdsupabase/migrations/
+README.md
+

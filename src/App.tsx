@@ -8,15 +8,12 @@ import {
   useParams,
 } from "react-router-dom";
 import { Document, Page, pdfjs } from "react-pdf";
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import { supabase } from "./lib/supabase";
 import type { Book, Note, Profile } from "./lib/types";
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url,
-).toString();
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
 
 function useSession() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -207,19 +204,34 @@ function Reader() {
     })();
   }, [id]);
   const saveProgress = async (newPage: number) => {
-    if (!id) return;
-    setPage(newPage);
-    await supabase
-      .from("reading_progress")
-      .upsert(
-        {
-          book_id: id,
-          current_page: newPage,
-          percent_complete: pages ? Math.round((newPage / pages) * 100) : 0,
-        },
-        { onConflict: "user_id,book_id" },
-      );
-  };
+    if (!id) return
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) return
+
+    setPage(newPage)
+
+    const { error } = await supabase.from('reading_progress').upsert(
+      {
+        user_id: user.id,
+        book_id: id,
+        current_page: newPage,
+        percent_complete: pages
+          ? Math.round((newPage / pages) * 100)
+          : 0,
+      },
+      {
+        onConflict: 'user_id,book_id',
+      },
+    )
+
+    if (error) {
+      console.error('Could not save reading progress:', error)
+    }
+  }
   const addNote = async (event: FormEvent) => {
     event.preventDefault();
     if (!id || !note.trim()) return;
